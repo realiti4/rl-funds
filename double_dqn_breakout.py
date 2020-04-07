@@ -96,8 +96,8 @@ def compute_td_loss(batch_size):
     reward     = torch.FloatTensor(reward).to(device)
     done       = torch.FloatTensor(done).to(device)
 
-    q_values      = model(state)
-    next_q_values = model(next_state)    
+    q_values      = current_model(state)
+    next_q_values = target_model(next_state)    
 
     q_value          = q_values.gather(1, action.unsqueeze(1)).squeeze(1)
     next_q_value     = next_q_values.max(1)[0]    
@@ -122,12 +122,12 @@ def plot(frame_idx, rewards, losses):
     plt.plot(losses)
     plt.show()
 
-model = CnnDQN(env.observation_space.shape, env.action_space.n).to(device)
+current_model = CnnDQN(env.observation_space.shape, env.action_space.n).to(device)
 target_model = CnnDQN(env.observation_space.shape, env.action_space.n).to(device)
 
-update_target(model, target_model)
+update_target(current_model, target_model)
    
-optimizer = optim.Adam(model.parameters(), lr=0.0001)
+optimizer = optim.Adam(current_model.parameters(), lr=0.0001)
 
 replay_initial = 20000
 replay_buffer = ReplayBuffer(1000000)
@@ -155,7 +155,7 @@ replay_done = False
 state = env.reset()
 for frame_idx in range(1, num_frames + 1):
     epsilon = epsilon_by_frame(frame_idx)
-    action = model.act(state, epsilon)
+    action = current_model.act(state, epsilon)
     # action = select_action(state)
     
     next_state, reward, done, _ = env.step(action)
@@ -182,7 +182,7 @@ for frame_idx in range(1, num_frames + 1):
         print(f'Reward: {np.mean(all_rewards[-40:])}, step: {round((frame_idx/num_frames*100), 2)}%')
         # plot(frame_idx, all_rewards, losses)
 
-        update_target(model, target_model)
+        update_target(current_model, target_model)
 
 
     # if frame_idx % 100000 == 0:
