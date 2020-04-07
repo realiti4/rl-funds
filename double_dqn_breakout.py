@@ -141,7 +141,7 @@ epsilon_by_frame = lambda frame_idx: epsilon_final + (epsilon_start - epsilon_fi
 plt.plot([epsilon_by_frame(i) for i in range(100000)])
 plt.show()
 
-num_frames = 100000
+num_frames = 200000
 batch_size = 64
 gamma      = 0.99
 
@@ -158,15 +158,17 @@ for frame_idx in range(1, num_frames + 1):
     action = current_model.act(state, epsilon)
     # action = select_action(state)
     
-    next_state, reward, done, _ = env.step(action)
+    next_state, reward, done, info = env.step(action)
     replay_buffer.push(state, action, reward, next_state, done)
     
     state = next_state
     episode_reward += reward
 
-    if frame_idx > num_frames-50000: env.render()
+    # debugging
+    if frame_idx > num_frames-10000: env.render()
+    # env.render()
     
-    if done:
+    if done and info['ale.lives'] == 0:
         state = env.reset()
         all_rewards.append(episode_reward)
         episode_reward = 0
