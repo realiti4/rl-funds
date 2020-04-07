@@ -127,21 +127,21 @@ target_model = CnnDQN(env.observation_space.shape, env.action_space.n).to(device
 
 update_target(current_model, target_model)
    
-optimizer = optim.Adam(current_model.parameters(), lr=0.0001)
+optimizer = optim.Adam(current_model.parameters(), lr=0.001)
 
-replay_initial = 20000
-replay_buffer = ReplayBuffer(1000000)
+replay_initial = 5000
+replay_buffer = ReplayBuffer(10000)
 
 epsilon_start = 1.0
 epsilon_final = 0.1
-epsilon_decay = 1000000
+epsilon_decay = 20000
 
 epsilon_by_frame = lambda frame_idx: epsilon_final + (epsilon_start - epsilon_final) * math.exp(-1. * frame_idx / epsilon_decay)
 
-plt.plot([epsilon_by_frame(i) for i in range(2000000)])
+plt.plot([epsilon_by_frame(i) for i in range(100000)])
 plt.show()
 
-num_frames = 2000000
+num_frames = 100000
 batch_size = 64
 gamma      = 0.99
 
@@ -181,7 +181,11 @@ for frame_idx in range(1, num_frames + 1):
     if frame_idx % 10000 == 0 and replay_done == True:
         print(f'Reward: {np.mean(all_rewards[-40:])}, step: {round((frame_idx/num_frames*100), 2)}%')
         # plot(frame_idx, all_rewards, losses)
+        
+        print(time.time()-start)
+        start = time.time()
 
+    if frame_idx % 1000 == 0:
         update_target(current_model, target_model)
 
 
