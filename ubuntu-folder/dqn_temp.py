@@ -296,12 +296,12 @@ update_target(policy_net, target_net)
 
 epsilon_start = 1.0
 epsilon_final = 0.01
-epsilon_decay = 400000
+epsilon_decay = 40000
 
 epsilon_by_frame = lambda frame_idx: epsilon_final + (epsilon_start - epsilon_final) * math.exp(-1. * frame_idx / epsilon_decay)
 
 
-num_frames = 1000000
+num_frames = 100000
 batch_size = 64
 gamma      = 0.99
 
