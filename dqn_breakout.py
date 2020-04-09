@@ -21,7 +21,7 @@ from collections import deque
 
 env_id = "BreakoutNoFrameskip-v4"
 env    = make_atari(env_id)
-env    = wrap_deepmind(env)
+env    = wrap_deepmind(env, frame_stack=True)
 env    = wrap_pytorch(env)
 
 # Replay Buffer
