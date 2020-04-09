@@ -17,9 +17,9 @@ device   = torch.device("cuda" if use_cuda else "cpu")
 
 from common.multiprocessing_env import SubprocVecEnv
 
-num_envs = 16
+num_envs = 1
 env_name = "CartPole-v1"
-env_name = 'LunarLander-v2'
+# env_name = 'LunarLander-v2'
 # env_name = 'BipedalWalker-v3'
 # env_name = 'MountainCar-v0'
 
@@ -94,7 +94,7 @@ num_outputs = envs.action_space.n
 
 hidden_size = 256
 lr = 3e-4
-num_steps = 32
+num_steps = 5
 
 model = ActorCritic(num_inputs, num_outputs, hidden_size).to(device)
 optimizer = optim.Adam(model.parameters())

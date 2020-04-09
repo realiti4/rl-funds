@@ -1,4 +1,4 @@
-import math, random, time
+import math, random, time, os
 
 import gym
 import numpy as np
@@ -130,18 +130,18 @@ update_target(current_model, target_model)
 optimizer = optim.Adam(current_model.parameters(), lr=0.0001)
 
 replay_initial = 5000
-replay_buffer = ReplayBuffer(100000)
+replay_buffer = ReplayBuffer(200000)
 
 epsilon_start = 1.0
 epsilon_final = 0.1
-epsilon_decay = 500000
+epsilon_decay = 5000000
 
 epsilon_by_frame = lambda frame_idx: epsilon_final + (epsilon_start - epsilon_final) * math.exp(-1. * frame_idx / epsilon_decay)
 
 plt.plot([epsilon_by_frame(i) for i in range(200000)])
 plt.show()
 
-num_frames = 2000000
+num_frames = 20000000
 batch_size = 64
 gamma      = 0.99
 
@@ -153,8 +153,20 @@ start = time.time()
 replay_done = False
 batch_pushed = 0
 
+epoch = 1
+load = True
+if load:
+    checkpoint = torch.load(f'checkpoints/dqn_breakout/checkpoint.pth')
+    current_model.load_state_dict(checkpoint['current_state_dict'])
+    target_model.load_state_dict(checkpoint['current_state_dict'])
+    optimizer.load_state_dict(checkpoint['policy_optim_dict'])
+    current_model.train()
+    target_model.train()
+    epoch = checkpoint['epoch']
+
+
 state = env.reset()
-for frame_idx in range(1, num_frames + 1):
+for frame_idx in range(epoch+1, num_frames + 1):
     epsilon = epsilon_by_frame(frame_idx)
     action = current_model.act(state, epsilon)
     # action = select_action(state)
@@ -193,18 +205,14 @@ for frame_idx in range(1, num_frames + 1):
     if frame_idx % 10000 == 0:
         update_target(current_model, target_model)
 
-
-    # if frame_idx % 100000 == 0:
-    #     # save the model
-    #     checkpoint_path = 'checkpoints/pytorch/rl/dqn_1/'
-    #     if not os.path.exists(checkpoint_path):
-    #         os.makedirs(checkpoint_path)
-    #     torch.save({
-    #         'epoch': frame_idx,
-    #         'policy_state_dict': model.state_dict(),
-    #         'policy_optim_dict': optimizer.state_dict()}, checkpoint_path + f'checkpoint.pth')
-    #     print(f'saved heeey')    
-
-    #     print(f'It took: {time.time()-start} secs')
-    #     # plot(frame_idx, all_rewards, losses)
-    #     start = time.time()
+    # Save
+    if frame_idx % 100000 == 0:
+        # save the model
+        checkpoint_path = 'checkpoints/dqn_breakout/'
+        if not os.path.exists(checkpoint_path):
+            os.makedirs(checkpoint_path)
+        torch.save({
+            'epoch': frame_idx,
+            'current_state_dict': current_model.state_dict(),
+            'policy_optim_dict': optimizer.state_dict()}, checkpoint_path + f'checkpoint.pth')
+        print(f'saved heeey')
