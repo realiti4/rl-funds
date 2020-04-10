@@ -30,8 +30,8 @@ def make_env():
 
     return _thunk
 
-envs = [make_env() for i in range(num_envs)]
-envs = SubprocVecEnv(envs)
+# envs = [make_env() for i in range(num_envs)]
+# envs = SubprocVecEnv(envs)
 
 env = gym.make(env_name)
 env2 = gym.make(env_name)
