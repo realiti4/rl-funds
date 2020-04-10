@@ -180,8 +180,8 @@ for frame_idx in range(epoch+1, num_frames + 1):
 
     # debugging
     if frame_idx > num_frames-10000: env.render()
-    env.render()
-    time.sleep(0.04)
+    # env.render()
+    # time.sleep(0.04)
     
     if done and info['ale.lives'] == 0:
         state = env.reset()
