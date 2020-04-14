@@ -316,18 +316,21 @@ class A2C_ACKTR():
 from arguments import get_args
 from envs import make_vec_envs
 from storage import RolloutStorage
+import utils
 
 def main():
     args = get_args()
+    args.num_processes = 1
+    args.env_name = 'BreakoutNoFrameskip-v4'
 
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
 
 
-    # log_dir = os.path.expanduser(args.log_dir)
-    # eval_log_dir = log_dir + "_eval"
-    # utils.cleanup_log_dir(log_dir)
-    # utils.cleanup_log_dir(eval_log_dir)
+    log_dir = os.path.expanduser(args.log_dir)
+    eval_log_dir = log_dir + "_eval"
+    utils.cleanup_log_dir(log_dir)
+    utils.cleanup_log_dir(eval_log_dir)
 
     torch.set_num_threads(1)
     device = torch.device("cuda" if args.cuda else "cpu")

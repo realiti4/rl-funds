@@ -112,7 +112,7 @@ num_outputs = envs.action_space.n
 
 hidden_size = 512
 lr = 3e-4
-num_steps = 1024
+num_steps = 5
 
 model = ActorCritic(num_inputs, num_outputs, hidden_size).to(device)
 optimizer = optim.Adam(model.parameters())
