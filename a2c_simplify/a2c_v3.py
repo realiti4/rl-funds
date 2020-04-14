@@ -320,7 +320,7 @@ import utils
 
 def main():
     args = get_args()
-    args.num_processes = 1
+    args.num_processes = 2
     args.env_name = 'BreakoutNoFrameskip-v4'
 
     torch.manual_seed(args.seed)

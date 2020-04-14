@@ -15,26 +15,19 @@ import matplotlib.pyplot as plt
 use_cuda = torch.cuda.is_available()
 device   = torch.device("cuda" if use_cuda else "cpu")
 
-from common.multiprocessing_env import SubprocVecEnv
-from common.wrappers import make_atari, wrap_deepmind, wrap_pytorch
 from collections import deque
 
 # num_envs = 1
 env_name = 'BreakoutNoFrameskip-v4'
 
 
-memory = torch.zeros([1, 4, 84 , 84])
-num_steps = 5
-
-
-# env = make_atari(env_name)
-# env = wrap_deepmind(env, frame_stack=True)
-# env = wrap_pytorch(env)
-
 # baselines' env.make
 from envs import make_vec_envs
 
-envs = make_vec_envs(env_name, 1, 1, 0.99, '/tmp/gym/', device, False)
+num_steps = 5
+num_processes = 4
+
+envs = make_vec_envs(env_name, 1, num_processes, 0.99, '/tmp/gym/', device, False)
 
 
 def init(module, weight_init, bias_init, gain=1):
@@ -89,7 +82,7 @@ class Model(nn.Module):
         return value, action, action_log_probs
 
     def evaluate_actions(self, inputs, action):
-        action = torch.cat(action).to(device)
+        # action = torch.cat(action).to(device)
         value, actor_features = self.forward(inputs.to(device))
         probs = self.actor_linear(actor_features)
         dist = Categorical(logits=probs)
@@ -112,7 +105,7 @@ class memory():
     def reset(self):
         self.state = torch.zeros([num_steps+1, 4, 84, 84]).to(device)
 
-memory = memory()
+# memory = memory()
 
 
 def compute_returns(next_value, rewards, masks, gamma=0.99):
@@ -135,7 +128,7 @@ import time
 start = time.time()
 
 epoch = 1
-load = True
+load = False
 if load:
     checkpoint = torch.load(f'checkpoints/a2c_breakout/checkpoint.pth')
     model.load_state_dict(checkpoint['current_state_dict'])
@@ -152,12 +145,12 @@ for i_episode in range(epoch+1, 1000000):
     entropy = 0
 
     # test1
-    states = torch.zeros([5, 4, 84, 84])
+    states = torch.zeros([num_steps, num_processes, 4, 84, 84])
     actions = []
 
     for step in range(num_steps):
         # test1
-        states[step] = state[0]
+        states[step] = state
 
         # envs.render()
         # time.sleep(0.05)
@@ -192,12 +185,16 @@ for i_episode in range(epoch+1, 1000000):
         next_value, _ = model(state)
     
     returns = compute_returns(next_value, rewards, masks)
-        
-    values, action_log_probs, dist_entropy = model.evaluate_actions(states, actions)
+    returns = torch.stack(returns)
 
-    values = values.view(5, 1, 1)
-    action_log_probs = action_log_probs.view(5, 1, 1)
-    returns = torch.cat(returns).view(5, 1, 1)
+    actions = torch.stack(actions)
+        
+    # values, action_log_probs, dist_entropy = model.evaluate_actions(states, actions)
+    values, action_log_probs, dist_entropy = model.evaluate_actions(states.view(-1, 4, 84, 84), actions.view(-1, 1))
+
+    values = values.view(num_steps, num_processes, 1)
+    action_log_probs = action_log_probs.view(num_steps, num_processes, 1)
+    # returns = torch.cat(returns).view(5, 1, 1)
 
     advantages = returns - values
     value_loss = advantages.pow(2).mean()
