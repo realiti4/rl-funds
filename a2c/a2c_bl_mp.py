@@ -216,10 +216,10 @@ for i_episode in range(epoch+1, 1000000):
     optimizer.step()                           
 
     if i_episode % 400 == 0:
-        print(f'mean: {round(sum(episode_rewards) / len(episode_rewards))}, max: {max(episode_rewards)}')
+        time_log = round((time.time() - start), 2)
+        print(f'mean: {round(sum(episode_rewards) / len(episode_rewards))}, max: {max(episode_rewards)}, time: {time_log} secs')
 
-        # print(time.time()-start)
-        # start = time.time()
+        start = time.time()
 
     # Save
     if i_episode % 10000 == 0:

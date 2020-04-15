@@ -121,10 +121,10 @@ def main():
     # torch.set_num_threads(1)
 
     num_steps = 5
-    num_processes = 2
+    num_processes = 8
 
     envs = make_vec_envs(env_name, 1, num_processes, 0.99, '/tmp/gym/', device, False)
-    
+
 
     state = envs.reset()
 
@@ -225,10 +225,10 @@ def main():
         optimizer.step()                           
 
         if i_episode % 400 == 0:
-            print(f'mean: {round(sum(episode_rewards) / len(episode_rewards))}, max: {max(episode_rewards)}')
+            time_log = round((time.time() - start), 2)
+            print(f'mean: {round(sum(episode_rewards) / len(episode_rewards))}, max: {max(episode_rewards)}, time: {time_log} secs')
 
-            # print(time.time()-start)
-            # start = time.time()
+            start = time.time()
 
         # Save
         if i_episode % 10000 == 0:
