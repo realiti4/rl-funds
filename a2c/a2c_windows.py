@@ -19,7 +19,7 @@ from collections import deque
 
 # num_envs = 1
 env_name = 'BreakoutNoFrameskip-v4'
-# env_name = 'PongNoFrameskip-v4'
+env_name = 'SpaceInvadersNoFrameskip-v0'
 
 
 # baselines' env.make
@@ -118,10 +118,10 @@ def compute_returns(next_value, rewards, masks, gamma=0.99):
     return returns
 
 def main(): 
-    # torch.set_num_threads(1)
+    torch.set_num_threads(1)
 
     num_steps = 5
-    num_processes = 8
+    num_processes = 12
 
     envs = make_vec_envs(env_name, 1, num_processes, 0.99, '/tmp/gym/', device, False)
 
@@ -162,7 +162,7 @@ def main():
             # test1
             states[step] = state
 
-            if i_episode >= 72000:
+            if load:
                 envs.render()
                 time.sleep(0.04)
 
