@@ -19,8 +19,8 @@ env = gym.make('gym_backgammon:backgammon-v0')
 
 seed = 548
 
-torch.manual_seed(seed)
-random.seed(seed)
+# torch.manual_seed(seed)
+# random.seed(seed)
 
 class value_func(nn.Module):
     def __init__(self):
@@ -31,13 +31,13 @@ class value_func(nn.Module):
         self.eligibility_traces = None
         
         self.layers = nn.Sequential(
-            nn.Linear(env.observation_space.shape[0], 40),
+            nn.Linear(env.observation_space.shape[0], 80),
             nn.Sigmoid(),
             # nn.ReLU(),
             # nn.Linear(40128),
             # nn.ReLU(),
 
-            nn.Linear(40, 1),
+            nn.Linear(80, 1),
             # nn.Softmax(dim=1)
             nn.Sigmoid()
         )
@@ -118,15 +118,25 @@ model = value_func().to(device)
 optimizer = optim.Adam(model.parameters(), lr=0.01)
 
 # Params
-num_episodes = 20000
+num_episodes = 100000
 eligibility = True
 gamma = 0.99
 
-# load = True
-# gui = True  
+load = True
+
+if load:
+    cp_state = torch.load('board-games/td_gammon/saved/test.tar')
+    model.load_state_dict(cp_state['model_state_dict'])
+    model.eligibility_traces = cp_state['eligibility']
+    start_episode = cp_state['step']
+    model.train()       # check this not sure    
 
 
 def train_agent():
+    # start_episode = start_episode
+    global num_episodes
+    num_episodes += start_episode
+
     wins = {WHITE: 0, BLACK: 0}
 
     agents = {WHITE: Agent(WHITE), BLACK: Agent(BLACK)}
@@ -134,7 +144,7 @@ def train_agent():
     durations = []
     steps = 0
 
-    for i_episode in range(num_episodes):
+    for i_episode in range(start_episode, num_episodes):
         
         if eligibility:
             model.init_eligibility_traces()
