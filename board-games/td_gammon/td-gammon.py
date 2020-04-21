@@ -43,6 +43,7 @@ class value_func(nn.Module):
         )
         
     def forward(self, x):
+        x = torch.tensor(x).to(device)
         return self.layers(x)
 
     def init_eligibility_traces(self):
@@ -93,7 +94,7 @@ class Agent:
             for i, action in enumerate(actions):            
 
                 observation, reward, done, info = env.step(action)
-                observation = torch.tensor(observation).to(device)
+                # observation = torch.tensor(observation).to(device)
 
                 values[i] = model(observation)      # detach() ???
 
@@ -150,7 +151,7 @@ def train_agent():
             else:
                 roll = agent.roll_dice()
 
-            observation = torch.tensor(observation).to(device)
+            # observation = torch.tensor(observation).to(device)
             value = model(observation)
             
             actions = env.get_valid_actions(roll)
@@ -158,7 +159,7 @@ def train_agent():
 
             observation_next, reward, done, winner = env.step(action)
 
-            observation_next = torch.tensor(observation_next).to(device)
+            # observation_next = torch.tensor(observation_next).to(device)
             next_value = model(observation_next)
 
             # expected_value = reward + gamma * next_value * (1 - done)
