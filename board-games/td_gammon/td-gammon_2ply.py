@@ -19,7 +19,7 @@ env = gym.make('gym_backgammon:backgammon-v0')
 
 seed = 548
 
-# torch.set_num_threads(3)
+torch.set_num_threads(3)
 
 # torch.manual_seed(seed)
 # random.seed(seed)
@@ -28,7 +28,7 @@ class value_func(nn.Module):
     def __init__(self):
         super(value_func, self).__init__()
 
-        self.lr = 0.04
+        self.lr = 0.1
         self.lamda = 0.7
         self.eligibility_traces = None
         
@@ -79,15 +79,18 @@ class Agent:
         self.color = color
         self.name = f'AgentExample({self.color})'
 
-    def roll_dice(self):
-        return (-random.randint(1, 6), -random.randint(1, 6)) if self.color == WHITE else (random.randint(1, 6), random.randint(1, 6))
+    def roll_dice(self, twoply=False):
+        if not twoply:
+            return (-random.randint(1, 6), -random.randint(1, 6)) if self.color == WHITE else (random.randint(1, 6), random.randint(1, 6))
+        else:
+            return (random.randint(1, 6), random.randint(1, 6)) if self.color == WHITE else (-random.randint(1, 6), -random.randint(1, 6))
 
     def choose_best_action(self, actions):
         best_action = None
 
         if actions:           
             values = [0.0 for i in range(len(actions))]
-            # values = [0.0] * len(actions)
+            # values = [[] for i in range(len(actions))]
 
             tmp_counter = env.counter
             env.counter = 0
@@ -96,12 +99,34 @@ class Agent:
             for i, action in enumerate(actions):            
 
                 observation, reward, done, info = env.step(action)
-                # observation = torch.tensor(observation).to(device)
 
-                values[i] = model(observation)      # detach() ???
+                # 2-ply         
+                env.get_opponent_agent()   
+                roll = self.roll_dice(twoply=True)
+                actions_2ply = env.get_valid_actions(roll)
+                
+                if actions_2ply:
+                    values_temp = [0.0 for i in range(len(actions_2ply))]
 
+                    tmp_counter_2ply = env.counter
+                    saved_state_2ply = env.game.save_state()
+
+                    for i_e, action_2ply in enumerate(actions_2ply):
+                        observation_2ply, reward, done, info = env.step(action_2ply)
+
+                        values_temp[i_e] = model(observation_2ply)  
+
+                        env.game.restore_state(saved_state_2ply)
+
+                    # values[i] = values_temp
+                    values[i] = torch.cat(values_temp).max().unsqueeze(0)
+                else:
+                    values[i] = model(observation)      # detach() ???
+                env.get_opponent_agent()  
                 env.game.restore_state(saved_state)
 
+
+            # test = [torch.cat(values[ie]).max() for ie in range(len(values))]
             best_action_index = torch.cat(values).max(0)[1] if self.color == 0 else torch.cat(values).min(0)[1]
             # best_action_index = int(np.argmax(values)) if self.color == 'WHITE' else int(np.argmax(values))
             best_action = list(actions)[best_action_index]
@@ -111,7 +136,7 @@ class Agent:
             return best_action
 
 def checkpoint(checkpoint_path, step):
-    path = checkpoint_path + f"/test.tar"
+    path = checkpoint_path + f"/test_2ply.tar"
     torch.save({'step': step + 1, 'model_state_dict': model.state_dict(), 'eligibility': model.eligibility_traces if model.eligibility_traces else []}, path)
     print("\nCheckpoint saved: {}".format(path))
 
@@ -120,6 +145,7 @@ model = value_func().to(device)
 optimizer = optim.Adam(model.parameters(), lr=0.01)
 
 # Params
+start_episode = 1
 num_episodes = 100000
 eligibility = True
 gamma = 0.99
