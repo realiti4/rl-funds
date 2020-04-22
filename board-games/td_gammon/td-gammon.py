@@ -26,7 +26,7 @@ class value_func(nn.Module):
     def __init__(self):
         super(value_func, self).__init__()
 
-        self.lr = 0.01
+        self.lr = 0.004
         self.lamda = 0.7
         self.eligibility_traces = None
         
