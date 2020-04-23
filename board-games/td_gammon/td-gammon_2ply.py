@@ -19,13 +19,13 @@ env = gym.make('gym_backgammon:backgammon-v0')
 
 seed = 548
 
-torch.set_num_threads(3)
+# torch.set_num_threads(3)
 
 # torch.manual_seed(seed)
 # random.seed(seed)
 
 class value_func(nn.Module):
-    def __init__(self):
+    def __init__(self, hidden_size):
         super(value_func, self).__init__()
 
         self.lr = 0.1
@@ -33,13 +33,14 @@ class value_func(nn.Module):
         self.eligibility_traces = None
         
         self.layers = nn.Sequential(
-            nn.Linear(env.observation_space.shape[0], 80),
+            nn.Linear(env.observation_space.shape[0], hidden_size),
+            # nn.LayerNorm(40),
             nn.Sigmoid(),
             # nn.ReLU(),
             # nn.Linear(40128),
             # nn.ReLU(),
 
-            nn.Linear(80, 1),
+            nn.Linear(hidden_size, 1),
             # nn.Softmax(dim=1)
             nn.Sigmoid()
         )
@@ -79,18 +80,15 @@ class Agent:
         self.color = color
         self.name = f'AgentExample({self.color})'
 
-    def roll_dice(self, twoply=False):
-        if not twoply:
-            return (-random.randint(1, 6), -random.randint(1, 6)) if self.color == WHITE else (random.randint(1, 6), random.randint(1, 6))
-        else:
-            return (random.randint(1, 6), random.randint(1, 6)) if self.color == WHITE else (-random.randint(1, 6), -random.randint(1, 6))
+    def roll_dice(self):        
+        return (-random.randint(1, 6), -random.randint(1, 6)) if self.color == WHITE else (random.randint(1, 6), random.randint(1, 6))
 
     def choose_best_action(self, actions):
         best_action = None
 
         if actions:           
             values = [0.0 for i in range(len(actions))]
-            # values = [[] for i in range(len(actions))]
+            assert_color = self.color
 
             tmp_counter = env.counter
             env.counter = 0
@@ -98,14 +96,14 @@ class Agent:
 
             for i, action in enumerate(actions):            
 
-                observation, reward, done, info = env.step(action)
-
-                # 2-ply         
-                env.get_opponent_agent()   
-                roll = self.roll_dice(twoply=True)
-                actions_2ply = env.get_valid_actions(roll)
+                observation, reward, done, info = env.step(action)                
                 
-                if actions_2ply:
+                # 2-ply
+                self.color = env.get_opponent_agent()   
+                roll = self.roll_dice()
+                actions_2ply = env.get_valid_actions(roll)
+
+                if actions_2ply:                   
                     values_temp = [0.0 for i in range(len(actions_2ply))]
 
                     tmp_counter_2ply = env.counter
@@ -114,34 +112,38 @@ class Agent:
                     for i_e, action_2ply in enumerate(actions_2ply):
                         observation_2ply, reward, done, info = env.step(action_2ply)
 
-                        values_temp[i_e] = model(observation_2ply)  
+                        with torch.no_grad():
+                            values_temp[i_e] = model(observation_2ply)  
 
                         env.game.restore_state(saved_state_2ply)
 
-                    # values[i] = values_temp
-                    values[i] = torch.cat(values_temp).max().unsqueeze(0)
+                    # env.game.restore_state(saved_state)
+                    self.color = env.get_opponent_agent()
+                    assert assert_color == self.color
+                    values[i] = torch.cat(values_temp).min().unsqueeze(0) if self.color == 0 else torch.cat(values_temp).max().unsqueeze(0)
                 else:
-                    values[i] = model(observation)      # detach() ???
-                env.get_opponent_agent()  
+                    self.color = env.get_opponent_agent()
+                    assert assert_color == self.color
+                    with torch.no_grad():
+                        values[i] = model(observation)      # detach() ???
+
                 env.game.restore_state(saved_state)
 
-
-            # test = [torch.cat(values[ie]).max() for ie in range(len(values))]
+            assert assert_color == self.color
             best_action_index = torch.cat(values).max(0)[1] if self.color == 0 else torch.cat(values).min(0)[1]
             # best_action_index = int(np.argmax(values)) if self.color == 'WHITE' else int(np.argmax(values))
             best_action = list(actions)[best_action_index]
             env.counter = tmp_counter
 
-            value = values[best_action_index]
             return best_action
 
 def checkpoint(checkpoint_path, step):
-    path = checkpoint_path + f"/test_2ply.tar"
+    path = checkpoint_path + f"/test_2ply_new.tar"
     torch.save({'step': step + 1, 'model_state_dict': model.state_dict(), 'eligibility': model.eligibility_traces if model.eligibility_traces else []}, path)
     print("\nCheckpoint saved: {}".format(path))
 
 
-model = value_func().to(device)
+model = value_func(hidden_size=80).to(device)
 optimizer = optim.Adam(model.parameters(), lr=0.01)
 
 # Params
@@ -152,8 +154,9 @@ gamma = 0.99
 
 load = True
 
+
 if load:
-    cp_state = torch.load('board-games/td_gammon/saved/test.tar')
+    cp_state = torch.load('./saved/test.tar')
     model.load_state_dict(cp_state['model_state_dict'])
     model.eligibility_traces = cp_state['eligibility']
     start_episode = cp_state['step']
@@ -238,72 +241,4 @@ def train_agent():
 
 train_agent()
 
-wins = {WHITE: 0, BLACK: 0}
-
-# agents = {WHITE: Agent(WHITE), BLACK: Agent(BLACK)}
-
-# agent_color, first_roll, observation = env.reset()
-
-# agent = agents[agent_color]
-
-# t = time.time()
-
-env.render(mode='human')
-
-gamma = 0.99
-
-for i in range(1000):
-    agents = {WHITE: Agent(WHITE), BLACK: Agent(BLACK)}
-    agent_color, first_roll, observation = env.reset()
-    agent = agents[agent_color]
-    t = time.time()
-    for i in count():
-        if first_roll:
-            roll = first_roll
-            first_roll = None
-        else:
-            roll = agent.roll_dice()
-
-        # print("Current player={} ({} - {}) | Roll={}".format(agent.color, TOKEN[agent.color], COLORS[agent.color], roll))
-
-        # TODO action select
-        state = torch.tensor(observation).unsqueeze(0).to(device)
-        value = model(state)
-        
-        actions = env.get_valid_actions(roll)
-
-        action = agent.choose_best_action(actions)
-
-        observation_next, reward, done, winner = env.step(action)
-
-        # env.render(mode='human')
-
-        next_state = torch.tensor(observation).unsqueeze(0).to(device)
-        next_value = model(next_state)
-
-        expected_value = reward + gamma * next_value * (1 - done)
-        loss = (value - expected_value.detach()).pow(2).mean()
-
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
-        if done:
-            if winner is not None:
-                wins[winner] += 1
-
-            tot = wins[WHITE] + wins[BLACK]
-            tot = tot if tot > 0 else 1
-
-            print("Game={} | Winner={} after {:<4} plays || Wins: {}={:<6}({:<5.1f}%) | {}={:<6}({:<5.1f}%) | Duration={:<.3f} sec".format(1, winner, i,
-                agents[WHITE].name, wins[WHITE], (wins[WHITE] / tot) * 100,
-                agents[BLACK].name, wins[BLACK], (wins[BLACK] / tot) * 100, time.time() - t))
-
-            break
-
-        agent_color = env.get_opponent_agent()
-        agent = agents[agent_color]
-        observation = observation_next
-
 env.close()
-
