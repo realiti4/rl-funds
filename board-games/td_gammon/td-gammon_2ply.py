@@ -156,7 +156,7 @@ load = True
 
 
 if load:
-    cp_state = torch.load('./saved/test.tar')
+    cp_state = torch.load('board-games/td_gammon/saved/test.tar')
     model.load_state_dict(cp_state['model_state_dict'])
     model.eligibility_traces = cp_state['eligibility']
     start_episode = cp_state['step']
