@@ -25,7 +25,7 @@ seed = 548
 # random.seed(seed)
 
 class value_func(nn.Module):
-    def __init__(self):
+    def __init__(self, hidden_size):
         super(value_func, self).__init__()
 
         self.lr = 0.1
@@ -33,13 +33,14 @@ class value_func(nn.Module):
         self.eligibility_traces = None
         
         self.layers = nn.Sequential(
-            nn.Linear(env.observation_space.shape[0], 128),
+            nn.Linear(env.observation_space.shape[0], hidden_size),
+            # nn.LayerNorm(40),
             nn.Sigmoid(),
             # nn.ReLU(),
             # nn.Linear(40128),
             # nn.ReLU(),
 
-            nn.Linear(128, 1),
+            nn.Linear(hidden_size, 1),
             # nn.Softmax(dim=1)
             nn.Sigmoid()
         )
@@ -98,7 +99,8 @@ class Agent:
                 observation, reward, done, info = env.step(action)
                 # observation = torch.tensor(observation).to(device)
 
-                values[i] = model(observation)      # detach() ???
+                with torch.no_grad():
+                    values[i] = model(observation)      # detach() ???
 
                 env.game.restore_state(saved_state)
 
@@ -107,25 +109,24 @@ class Agent:
             best_action = list(actions)[best_action_index]
             env.counter = tmp_counter
 
-            value = values[best_action_index]
             return best_action
 
 def checkpoint(checkpoint_path, step):
-    path = checkpoint_path + f"/test_128.tar"
+    path = checkpoint_path + f"/agent200k_80h.tar"
     torch.save({'step': step + 1, 'model_state_dict': model.state_dict(), 'eligibility': model.eligibility_traces if model.eligibility_traces else []}, path)
     print("\nCheckpoint saved: {}".format(path))
 
 
-model = value_func().to(device)
+model = value_func(hidden_size=80).to(device)
 optimizer = optim.Adam(model.parameters(), lr=0.01)
 
 # Params
 start_episode = 1
-num_episodes = 100000
+num_episodes = 200000
 eligibility = True
 gamma = 0.99
 
-load = True
+load = False
 
 if load:
     cp_state = torch.load('board-games/td_gammon/saved/test_128.tar')
