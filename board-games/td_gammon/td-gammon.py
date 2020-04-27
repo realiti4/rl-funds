@@ -134,7 +134,7 @@ num_episodes = 200000
 eligibility = True
 gamma = 0.99
 
-load = False
+load = True
 
 if load:
     cp_state = torch.load('board-games/td_gammon/saved/agent200k_64h.tar')

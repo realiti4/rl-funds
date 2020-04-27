@@ -20,7 +20,9 @@ preprocess_train = preprocessing_v3(df, ['close', 'open', 'low', 'high', 'volume
 
 array = preprocess_train.temp_handler(convert_to_log=0, normalize=False)
 
-plt.plot(array[:,0])
-plt.show()
+# plt.plot(array[:,0])
+# plt.show()
+
+state = env.reset()
 
 print('debugging')
