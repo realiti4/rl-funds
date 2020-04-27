@@ -36,7 +36,7 @@ class value_func(nn.Module):
             nn.Linear(env.observation_space.shape[0], hidden_size),
             # nn.LayerNorm(40),
             nn.Sigmoid(),
-            # nn.ReLU(),
+            
             nn.Linear(hidden_size, hidden_size),
             nn.Sigmoid(),
 
@@ -91,7 +91,6 @@ class Agent:
         best_action = None
 
         if actions:           
-            # values = [0.0 for i in range(len(actions))]
             # values = torch.zeros(len(actions), device=device)
             obs_array = np.zeros([len(actions), 198])
 

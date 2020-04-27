@@ -36,8 +36,8 @@ class value_func(nn.Module):
             nn.Linear(env.observation_space.shape[0], hidden_size),
             # nn.LayerNorm(40),
             nn.Sigmoid(),
-            # nn.ReLU(),
-            # nn.Linear(40128),
+
+            # nn.Linear(hidden_size),
             # nn.ReLU(),
 
             nn.Linear(hidden_size, 1),
@@ -46,11 +46,11 @@ class value_func(nn.Module):
         )
         
     def forward(self, x):
-        x = torch.tensor(x).to(device)
+        # x = torch.tensor(x).to(device)        
         return self.layers(x)
 
     def init_eligibility_traces(self):
-        self.eligibility_traces = [torch.zeros(weights.shape, requires_grad=False) for weights in list(self.parameters())]
+        self.eligibility_traces = [torch.zeros(weights.shape, requires_grad=False, device=device) for weights in list(self.parameters())]
 
     def update_weights(self, p, p_next):
         # reset the gradients
@@ -73,6 +73,10 @@ class value_func(nn.Module):
 
                 # w <- w + alpha * td_error * z
                 new_weights = weights + self.lr * td_error * self.eligibility_traces[i]
+
+                # # TODO try weight norm
+                # new_weights = torch.norm(new_weights, dim=1, keepdim=True)
+
                 weights.copy_(new_weights)
 
 class Agent:
@@ -87,7 +91,7 @@ class Agent:
         best_action = None
 
         if actions:           
-            values = [0.0 for i in range(len(actions))]
+            values = torch.zeros(len(actions), device=device)
             assert_color = self.color
 
             tmp_counter = env.counter
@@ -104,7 +108,8 @@ class Agent:
                 actions_2ply = env.get_valid_actions(roll)
 
                 if actions_2ply:                   
-                    values_temp = [0.0 for i in range(len(actions_2ply))]
+                    # store_obs = torch.zeros([len(actions_2ply), 198], device=device)
+                    obs_array = np.zeros([len(actions_2ply), 198], dtype='float32')
 
                     tmp_counter_2ply = env.counter
                     saved_state_2ply = env.game.save_state()
@@ -112,33 +117,36 @@ class Agent:
                     for i_e, action_2ply in enumerate(actions_2ply):
                         observation_2ply, reward, done, info = env.step(action_2ply)
 
-                        with torch.no_grad():
-                            values_temp[i_e] = model(observation_2ply)  
+                        # store_obs[i_e] = torch.FloatTensor(observation_2ply)
+                        obs_array[i_e] = observation_2ply
 
                         env.game.restore_state(saved_state_2ply)
 
-                    # env.game.restore_state(saved_state)
+                    with torch.no_grad():
+                        store_obs = torch.from_numpy(obs_array).double().to(device)
+                        values_temp = model(store_obs).squeeze(1)
+
                     self.color = env.get_opponent_agent()
                     assert assert_color == self.color
-                    values[i] = torch.cat(values_temp).min().unsqueeze(0) if self.color == 0 else torch.cat(values_temp).max().unsqueeze(0)
+                    values[i] = values_temp.min().unsqueeze(0) if self.color == 0 else values_temp.max().unsqueeze(0)
                 else:
                     self.color = env.get_opponent_agent()
                     assert assert_color == self.color
+                    observation = torch.tensor(observation).to(device)
                     with torch.no_grad():
                         values[i] = model(observation)      # detach() ???
 
                 env.game.restore_state(saved_state)
 
             assert assert_color == self.color
-            best_action_index = torch.cat(values).max(0)[1] if self.color == 0 else torch.cat(values).min(0)[1]
-            # best_action_index = int(np.argmax(values)) if self.color == 'WHITE' else int(np.argmax(values))
+            best_action_index = values.max(0)[1] if self.color == 0 else values.min(0)[1]
             best_action = list(actions)[best_action_index]
             env.counter = tmp_counter
 
             return best_action
 
 def checkpoint(checkpoint_path, step):
-    path = checkpoint_path + f"/test_2ply_new.tar"
+    path = checkpoint_path + f"/agent_cuda.tar"
     torch.save({'step': step + 1, 'model_state_dict': model.state_dict(), 'eligibility': model.eligibility_traces if model.eligibility_traces else []}, path)
     print("\nCheckpoint saved: {}".format(path))
 
@@ -152,7 +160,7 @@ num_episodes = 100000
 eligibility = True
 gamma = 0.99
 
-load = True
+load = False
 
 
 if load:
@@ -183,6 +191,8 @@ def train_agent():
         agent_color, first_roll, observation = env.reset()
         agent = agents[agent_color]
 
+        observation = torch.tensor(observation).to(device)
+
         t = time.time()
 
         for i in count():
@@ -200,7 +210,7 @@ def train_agent():
 
             observation_next, reward, done, winner = env.step(action)
 
-            # observation_next = torch.tensor(observation_next).to(device)
+            observation_next = torch.tensor(observation_next).to(device)
             next_value = model(observation_next)
 
             # expected_value = reward + gamma * next_value * (1 - done)
