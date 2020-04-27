@@ -73,6 +73,10 @@ class value_func(nn.Module):
 
                 # w <- w + alpha * td_error * z
                 new_weights = weights + self.lr * td_error * self.eligibility_traces[i]
+
+                # # TODO try weight norm
+                # new_weights = torch.norm(new_weights, dim=1, keepdim=True)
+
                 weights.copy_(new_weights)
 
 class Agent:

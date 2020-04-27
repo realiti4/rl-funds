@@ -11,7 +11,7 @@ import torch.optim as optim
 import torch.autograd as autograd 
 import torch.nn.functional as F
 
-device = torch.device('cpu')
+device = torch.device('cuda')
 
 torch.set_default_tensor_type('torch.DoubleTensor')
 
@@ -37,8 +37,8 @@ class value_func(nn.Module):
             # nn.LayerNorm(40),
             nn.Sigmoid(),
             # nn.ReLU(),
-            # nn.Linear(40128),
-            # nn.ReLU(),
+            nn.Linear(hidden_size, hidden_size),
+            nn.Sigmoid(),
 
             nn.Linear(hidden_size, 1),
             # nn.Softmax(dim=1)
@@ -50,7 +50,7 @@ class value_func(nn.Module):
         return self.layers(x)
 
     def init_eligibility_traces(self):
-        self.eligibility_traces = [torch.zeros(weights.shape, requires_grad=False) for weights in list(self.parameters())]
+        self.eligibility_traces = [torch.zeros(weights.shape, requires_grad=False, device=device) for weights in list(self.parameters())]
 
     def update_weights(self, p, p_next):
         # reset the gradients
@@ -73,6 +73,10 @@ class value_func(nn.Module):
 
                 # w <- w + alpha * td_error * z
                 new_weights = weights + self.lr * td_error * self.eligibility_traces[i]
+
+                # # TODO try weight norm
+                # new_weights = torch.norm(new_weights, dim=1, keepdim=True)
+
                 weights.copy_(new_weights)
 
 class Agent:
@@ -87,8 +91,9 @@ class Agent:
         best_action = None
 
         if actions:           
-            values = [0.0 for i in range(len(actions))]
-            # values = [0.0] * len(actions)
+            # values = [0.0 for i in range(len(actions))]
+            # values = torch.zeros(len(actions), device=device)
+            obs_array = np.zeros([len(actions), 198])
 
             tmp_counter = env.counter
             env.counter = 0
@@ -97,15 +102,19 @@ class Agent:
             for i, action in enumerate(actions):            
 
                 observation, reward, done, info = env.step(action)
-                # observation = torch.tensor(observation).to(device)
+                obs_array[i] = observation
 
-                with torch.no_grad():
-                    values[i] = model(observation)      # detach() ???
+                # with torch.no_grad():
+                #     values[i] = model(observation)      # detach() ???
 
                 env.game.restore_state(saved_state)
 
-            best_action_index = torch.cat(values).max(0)[1] if self.color == 0 else torch.cat(values).min(0)[1]
-            # best_action_index = int(np.argmax(values)) if self.color == 'WHITE' else int(np.argmax(values))
+            with torch.no_grad():
+                # store_obs = torch.from_numpy(obs_array).to(device)
+                values = model(obs_array).squeeze(1)
+
+            best_action_index = values.max(0)[1] if self.color == 0 else values.min(0)[1]
+            # best_action_index = torch.cat(values).max(0)[1] if self.color == 0 else torch.cat(values).min(0)[1]
             best_action = list(actions)[best_action_index]
             env.counter = tmp_counter
 
@@ -117,7 +126,7 @@ def checkpoint(checkpoint_path, step):
     print("\nCheckpoint saved: {}".format(path))
 
 
-model = value_func(hidden_size=80).to(device)
+model = value_func(hidden_size=64).to(device)
 optimizer = optim.Adam(model.parameters(), lr=0.01)
 
 # Params
@@ -147,6 +156,7 @@ def train_agent():
 
     durations = []
     steps = 0
+    t2 = time.time()
 
     for i_episode in range(start_episode, num_episodes):
         
@@ -209,6 +219,9 @@ def train_agent():
 
         # Save
         if i_episode % 1000 == 0:
+            t2_end = time.time()
+            print(t2_end-t2)
+            t2 = t2_end
             checkpoint(checkpoint_path='board-games/td_gammon/saved', step=i_episode)
             
 
