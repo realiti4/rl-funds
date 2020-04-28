@@ -1,6 +1,7 @@
 import gym
 import gym_trading
 import pandas as pd
+import numpy as np
 
 from gym_trading.envs.pre_new import preprocessing_v3
 
@@ -24,6 +25,14 @@ array = preprocess_train.temp_handler(convert_to_log=0, normalize=False)
 # plt.show()
 
 state = env.reset()
+
+for i in range(10000):
+    action = np.random.randint(2)
+    state, reward, done, info = env.step((action, 100))
+
+    if done:
+        print(reward)
+        break
 
 print('debugging')
 
