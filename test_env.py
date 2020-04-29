@@ -27,8 +27,9 @@ array = preprocess_train.temp_handler(convert_to_log=0, normalize=False)
 state = env.reset()
 
 for i in range(10000):
-    action = np.random.randint(2)
-    state, reward, done, info = env.step((action, 100))
+    action = np.random.randint(3)
+    amount_size = np.random.randint(5)
+    state, reward, done, info = env.step((action, amount_size))
 
     if done:
         print(reward)

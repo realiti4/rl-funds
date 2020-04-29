@@ -120,7 +120,7 @@ class Agent:
             return best_action
 
 def checkpoint(checkpoint_path, step):
-    path = checkpoint_path + f"/agent750k_64h.tar"
+    path = checkpoint_path + f"/agent1m_64h.tar"
     torch.save({'step': step + 1, 'model_state_dict': model.state_dict(), 'eligibility': model.eligibility_traces if model.eligibility_traces else []}, path)
     print("\nCheckpoint saved: {}".format(path))
 
@@ -130,14 +130,14 @@ optimizer = optim.Adam(model.parameters(), lr=0.01)
 
 # Params
 start_episode = 1
-num_episodes = 200000
+num_episodes = 400000
 eligibility = True
 gamma = 0.99
 
 load = True
 
 if load:
-    cp_state = torch.load('board-games/td_gammon/saved/agent600k_64h.tar')
+    cp_state = torch.load('board-games/td_gammon/saved/agent750k_64h.tar')
     model.load_state_dict(cp_state['model_state_dict'])
     model.eligibility_traces = cp_state['eligibility']
     start_episode = cp_state['step']

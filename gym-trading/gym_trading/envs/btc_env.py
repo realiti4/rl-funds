@@ -41,14 +41,17 @@ class btc_env(gym.Env):
 
         action = (sell/buy, amount)
         """
+        fixed_amount = 100
 
-        position, amount = action
+        position, amount_size = action
+        amount = fixed_amount * amount_size
+        trading_fee = (amount / 100) * 0.075
 
         if position == 0:
-            self.liq += amount
+            self.liq += amount - trading_fee
             self.btc -= amount / self.current_price
         elif position == 1:
-            self.liq -= amount
+            self.liq -= amount + trading_fee
             self.btc += amount / self.current_price
         
         self.current_tick += 1
