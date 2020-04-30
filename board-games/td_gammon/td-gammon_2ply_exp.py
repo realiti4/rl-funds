@@ -1,3 +1,5 @@
+# 2ply 2nd attempt storing obs for one step
+
 import gym
 import time
 from itertools import count
