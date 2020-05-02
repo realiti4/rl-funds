@@ -37,8 +37,8 @@ class value_func(nn.Module):
             # nn.LayerNorm(40),
             nn.Sigmoid(),
             
-            nn.Linear(hidden_size, hidden_size),
-            nn.Sigmoid(),
+            # nn.Linear(hidden_size, hidden_size),
+            # nn.Sigmoid(),
 
             nn.Linear(hidden_size, 1),
             # nn.Softmax(dim=1)
@@ -120,21 +120,21 @@ class Agent:
             return best_action
 
 def checkpoint(checkpoint_path, step):
-    path = checkpoint_path + f"/agent1m_64h.tar"
+    path = checkpoint_path + f"/test2.tar"
     torch.save({'step': step + 1, 'model_state_dict': model.state_dict(), 'eligibility': model.eligibility_traces if model.eligibility_traces else []}, path)
     print("\nCheckpoint saved: {}".format(path))
 
 
-model = value_func(hidden_size=64).to(device)
+model = value_func(hidden_size=80).to(device)
 optimizer = optim.Adam(model.parameters(), lr=0.01)
 
 # Params
 start_episode = 1
-num_episodes = 400000
+num_episodes = 500000
 eligibility = True
 gamma = 0.99
 
-load = True
+load = False
 
 if load:
     cp_state = torch.load('board-games/td_gammon/saved/agent750k_64h.tar')
