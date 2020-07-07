@@ -18,8 +18,8 @@ device   = torch.device("cuda" if use_cuda else "cpu")
 from collections import deque
 
 # num_envs = 1
-env_name = 'BreakoutNoFrameskip-v4'
-# env_name = 'PongNoFrameskip-v4'
+# env_name = 'BreakoutNoFrameskip-v4'
+env_name = 'PongNoFrameskip-v4'
 
 
 # baselines' env.make
@@ -28,7 +28,7 @@ from envs import make_vec_envs
 num_steps = 5
 num_processes = 16
 
-envs = make_vec_envs(env_name, 1, num_processes, 0.99, '/tmp/gym/', device, False)
+envs = make_vec_envs(env_name, 1, num_processes, 0.99, '/home/realiti/Desktop/tmp', device, False)      # fix for ubuntu
 
 
 def init(module, weight_init, bias_init, gain=1):
@@ -129,7 +129,7 @@ import time
 start = time.time()
 
 epoch = 1
-load = True
+load = False
 if load:
     checkpoint = torch.load(f'checkpoints/a2c_breakout/checkpoint.pth')
     model.load_state_dict(checkpoint['current_state_dict'])
